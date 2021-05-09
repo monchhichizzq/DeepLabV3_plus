@@ -1,4 +1,6 @@
 # Byte-compiled / optimized / DLL files
+train_test_inputs/
+.idea/
 __pycache__/
 *.py[cod]
 *$py.class
