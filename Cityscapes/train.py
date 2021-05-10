@@ -23,7 +23,7 @@ val_file = os.path.join(txt_dir, "Cityscape_eigen_val_files.txt")
 
 # Hyperparameters
 lr = 3e-4
-batch_size = 16
+batch_size = 32
 num_classes = 34
 scale_factor = 8
 epochs = 500
@@ -56,13 +56,14 @@ val_params = {'mode': 'val',
 
 if __name__ == "__main__":
     log_dir = "logs/"
+    os.makedirs(log_dir, exist_ok=True)
     model = Deeplabv3(input_shape=(int(input_shape[0]/scale_factor*2), int(input_shape[1]/scale_factor*2), 3), classes=num_classes, alpha=1.)
     model.summary()
 
     train_generator = CityScape_DataGenerator(**train_params)
     val_generator = CityScape_DataGenerator(**val_params)
 
-    checkpoint = ModelCheckpoint(log_dir + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
+    checkpoint = ModelCheckpoint(log_dir + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}-mean_iou{mean_iou:.3f}-pixel_acc{pixel_acc:.3f}.h5',
                                  monitor='val_loss', save_weights_only=True, save_best_only=True)
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=20, verbose=1)
     # early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1)
@@ -80,5 +81,5 @@ if __name__ == "__main__":
     model.fit(train_generator,
             validation_data=val_generator,
             epochs=epochs,
-            verbose=0,
+            verbose=2,
             callbacks=[checkpoint, reduce_lr])

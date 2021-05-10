@@ -174,8 +174,10 @@ class Total_Loss():
 
     def focal_loss(self, y_true, y_pred):
         y_pred = tf.maximum(y_pred, self.epsilon)
-        focal_loss = tf.reduce_sum(- y_true * self.alpha * (1 - y_pred) ** self.gamma * tf.math.log(y_pred),
-                                    axis=-1)
+        ones = tf.ones_like(y_true)
+        # alpha should be a step function as paper mentioned, but ut doesn't matter
+        alpha_t = tf.where(tf.equal(y_true,1), self.alpha*ones, 1-self.alpha*ones)
+        focal_loss = -tf.reduce_sum(y_true * alpha_t * (1 - y_pred) ** self.gamma * tf.math.log(y_pred), axis=-1)
         return focal_loss
 
     def miou(self, y_true, y_pred):
