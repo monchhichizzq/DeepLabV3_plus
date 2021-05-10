@@ -140,7 +140,7 @@ class CityScape_DataGenerator(Sequence):
                        filp_rate    = 0,
                        scale_factor = 8,
                        max_degree   = 2.5,
-                       one_hot      = False,
+                       one_hot      = True,
                        visual       = False,
                        shuffle      = True):
 
@@ -277,7 +277,7 @@ class CityScape_DataGenerator(Sequence):
                 cv2.waitKey(10000)
 
 
-        return image_batch, target_batch, label_batch
+        return image_batch, target_reshape_batch, label_batch
 
 if __name__ == '__main__':
     root_dir   = "G:\Datasets\cityscapes"

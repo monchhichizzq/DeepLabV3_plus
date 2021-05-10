@@ -23,9 +23,9 @@ val_file = os.path.join(txt_dir, "Cityscape_eigen_val_files.txt")
 
 # Hyperparameters
 lr = 3e-4
-batch_size = 64
+batch_size = 16
 num_classes = 34
-scale_factor = 4
+scale_factor = 8
 epochs = 500
 visual = False
 
@@ -56,7 +56,7 @@ val_params = {'mode': 'val',
 
 if __name__ == "__main__":
     log_dir = "logs/"
-    model = Deeplabv3(input_shape=input_shape, classes=num_classes, alpha=1.)
+    model = Deeplabv3(input_shape=(int(input_shape[0]/scale_factor*2), int(input_shape[1]/scale_factor*2), 3), classes=num_classes, alpha=1.)
     model.summary()
 
     train_generator = CityScape_DataGenerator(**train_params)
@@ -71,6 +71,7 @@ if __name__ == "__main__":
     model.compile(loss='categorical_crossentropy',
                   optimizer=Adam(lr=lr),
                   metrics=['accuracy',
+                           'categorical_crossentropy',
                            total_loss.focal_loss,
                            total_loss.softmax_loss,
                            total_loss.mean_iou,
@@ -79,4 +80,5 @@ if __name__ == "__main__":
     model.fit(train_generator,
             validation_data=val_generator,
             epochs=epochs,
+            verbose=0,
             callbacks=[checkpoint, reduce_lr])

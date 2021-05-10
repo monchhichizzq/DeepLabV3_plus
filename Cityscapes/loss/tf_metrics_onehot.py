@@ -167,7 +167,6 @@ class Total_Loss():
         self.class_names = class_names
         self.n_class = n_class
 
-
     def softmax_loss(self, y_true, y_pred):
         y_pred = tf.maximum(y_pred, self.epsilon)
         softmax_loss = -tf.reduce_sum(y_true * tf.math.log(y_pred), axis=-1)
