@@ -227,6 +227,7 @@ class Total_Loss():
             name = self.class_names[i]
             # print(i, name)
             self.miou_dir[name] = ious_real[i]
+            # tf.print(name, self.miou_dir[name])
         # tf.print('\n', miou_dir)
         return mean
 

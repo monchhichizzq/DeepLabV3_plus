@@ -82,6 +82,7 @@ def mobilenetV2(inputs, alpha=1):
                use_bias=False, name='Conv')(inputs)
     x = BatchNormalization(epsilon=1e-3, momentum=0.999, name='Conv_bn')(x)
     x = ReLU(max_value=6, name='Conv_Relu6')(x)
+    x = Dropout(0.2)(x)
 
     # 208,208,32 -> 208,208,16
     x = _inverted_res_block(x, filters=16, alpha=alpha, stride=1,
@@ -92,6 +93,7 @@ def mobilenetV2(inputs, alpha=1):
                             expansion=6, block_id=1, skip_connection=False)
     x = _inverted_res_block(x, filters=24, alpha=alpha, stride=1,
                             expansion=6, block_id=2, skip_connection=True)
+    x = Dropout(0.3)(x)
     skip1 = x # downsample x4
 
     # 104,104,24 -> 52,52,32 downsample x8
@@ -101,6 +103,7 @@ def mobilenetV2(inputs, alpha=1):
                             expansion=6, block_id=4, skip_connection=True)
     x = _inverted_res_block(x, filters=32, alpha=alpha, stride=1,
                             expansion=6, block_id=5, skip_connection=True)
+    x = Dropout(0.5)(x)
 
     # ---------------------------------------------------------------#
     # 52,52,32 -> 52,52,64 downsample x8 -> downsample x16, dilation_rate=2
@@ -112,6 +115,7 @@ def mobilenetV2(inputs, alpha=1):
                             expansion=6, block_id=8, skip_connection=True)
     x = _inverted_res_block(x, filters=64, alpha=alpha, stride=1, rate=2,
                             expansion=6, block_id=9, skip_connection=True)
+    x = Dropout(0.5)(x)
 
     # 52,52,64 -> 52,52,96
     x = _inverted_res_block(x, filters=96, alpha=alpha, stride=1, rate=2,
@@ -120,6 +124,7 @@ def mobilenetV2(inputs, alpha=1):
                             expansion=6, block_id=11, skip_connection=True)
     x = _inverted_res_block(x, filters=96, alpha=alpha, stride=1, rate=2,
                             expansion=6, block_id=12, skip_connection=True)
+    x = Dropout(0.5)(x)
 
     # 52,52,96 -> 52,52,160
     x = _inverted_res_block(x, filters=160, alpha=alpha, stride=1, rate=2,  # 1!
@@ -133,6 +138,7 @@ def mobilenetV2(inputs, alpha=1):
     # 52,52,160 -> 52,52,320
     x = _inverted_res_block(x, filters=320, alpha=alpha, stride=1, rate=4,
                             expansion=6, block_id=16, skip_connection=False)
+    x = Dropout(0.5)(x)
 
     # x32 downsampling
     return x, skip1

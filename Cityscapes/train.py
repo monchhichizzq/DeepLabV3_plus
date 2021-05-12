@@ -63,7 +63,7 @@ if __name__ == "__main__":
     train_generator = CityScape_DataGenerator(**train_params)
     val_generator = CityScape_DataGenerator(**val_params)
 
-    checkpoint = ModelCheckpoint(log_dir + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}-mean_iou{mean_iou:.3f}-pixel_acc{pixel_acc:.3f}.h5',
+    checkpoint = ModelCheckpoint(log_dir + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}-mean_iou{mean_iou:.3f}-pixel_acc{pixel_acc:.3f}-val_mean_iou{val_mean_iou:.3f}-val_pixel_acc{val_pixel_acc:.3f}.h5',
                                  monitor='val_loss', save_weights_only=True, save_best_only=True)
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=20, verbose=1)
     # early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1)
@@ -81,5 +81,5 @@ if __name__ == "__main__":
     model.fit(train_generator,
             validation_data=val_generator,
             epochs=epochs,
-            verbose=2,
+            verbose=1,
             callbacks=[checkpoint, reduce_lr])

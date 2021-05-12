@@ -108,7 +108,7 @@ def Deeplabv3(input_shape=(416, 416, 3), classes=21, alpha=1.):
     x = Conv2D(256, (1, 1), padding='same', use_bias=False, name='concat_projection')(x)
     x = BatchNormalization(name='concat_projection_bn', epsilon=1e-5)(x)
     x = ReLU(name='concat_projection_relu')(x)
-    x = Dropout(0.1)(x)
+    x = Dropout(0.5)(x)
 
     # skip1.shape[1:3] 为 104,104
     # 52,52,256 -> 104,104,256
