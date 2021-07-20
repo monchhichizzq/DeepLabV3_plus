@@ -10,6 +10,7 @@ import cv2
 import numpy as np
 from PIL import Image
 from collections import namedtuple
+import tensorflow as tf
 from tensorflow.keras.utils import Sequence
 from datasets.aug_utils import RandomHorizontalFlip
 from datasets.aug_utils import Noramlize
@@ -72,8 +73,13 @@ class Cityscapes(Sequence):
     print('Number of colors: {}'.format(len(train_id_to_color)))
     id_to_train_id = np.array([c.train_id for c in classes])
     print('Number of ids: {}'.format(len(id_to_train_id)))
-    class_name = [c.name for c in classes]
-    print('class names: {}'.format(class_name))
+    class_name = [c.name for c in classes if (c.train_id != -1 and c.train_id != 255)]
+    print('class names num: {}, {}'.format(len(class_name), class_name))
+    cls_dir = {}
+    for c in classes:
+        cls_dir[c.name] = c.train_id
+    print(cls_dir)
+    # train_id 255 is class 19, 0-18 total 19 classes + 19 as one additonal classes
 
     # train_id_to_color = [(0, 0, 0), (128, 64, 128), (70, 70, 70), (153, 153, 153), (107, 142, 35),
     #                      (70, 130, 180), (220, 20, 60), (0, 0, 142)]
@@ -199,12 +205,14 @@ class Cityscapes(Sequence):
                     cv2.imshow('target', target)
                 image, target = Noramlize(image, target, self.mean, self.std)
             target = self.encode_target(target)
+            # target = tf.keras.utils.to_categorical(target, num_classes=19)
 
             images[i] = image
             targets[i] = target
 
             cv2.waitKey(100)
-
+        # print('images: ', np.shape(images))
+        # print('targets: ', np.shape(targets))
         return images, targets
 
     def __len__(self):

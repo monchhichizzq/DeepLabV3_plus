@@ -6,8 +6,6 @@
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.losses import Loss, mean_squared_error
-from preparation.semantic_color2index import index_to_name
 from tensorflow.keras.metrics import MeanIoU
 
 
@@ -80,78 +78,25 @@ def semantic_loss(n_class):
     return focalloss
 
 def confusion_matrix(y_true, y_pred, n_class):
-    # (N, h, w, class) -> (N, class)
-    # tf.print('1', y_pred.shape, tf.reduce_max(y_pred))
-    y_true_pixels = tf.reshape(y_true, [-1, n_class])
-    y_pred_pixels = tf.reshape(y_pred, [-1, n_class])
-    # tf.print('2', y_pred_pixels.shape, tf.reduce_max(y_pred_pixels))
+    # batch_size, h, w = y_true.shape
+    y_true = tf.reshape(y_true, [-1])
+    y_pred = tf.reshape(y_pred, [-1, n_class])
 
-    # (N, class) -> (N, )
-    y_true_arg = tf.argmax(y_true_pixels, 1)
-    y_pred_arg = tf.argmax(y_pred_pixels, 1)
-    # tf.print('3', y_pred_arg.shape, tf.reduce_max(y_pred_arg))
+    y_true_arg = y_true
+    y_pred_arg = tf.argmax(y_pred, 1)
+
+    mask = y_true_arg != 255  # ignore label 255
+    gt_masked = tf.boolean_mask(y_true_arg, mask)
+    predict_masked = tf.boolean_mask(y_pred_arg, mask)
+
+    # tf.print('gt', gt_masked.shape)
+    # tf.print('pre', predict_masked.shape)
 
     # confusion matrix
-    cm = tf.math.confusion_matrix(y_true_arg, y_pred_arg, num_classes=n_class)
+    # cm = tf.math.confusion_matrix(gt_masked, predict_masked, num_classes=(n_class-1))
+    cm = tf.math.confusion_matrix(gt_masked, predict_masked)
     # confusion matrix: (20, 20)
     return cm
-
-
-def Pixel_Acc():
-
-    def pixel_acc(y_true, y_pred):
-        cm   = confusion_matrix(y_true, y_pred, n_class)
-        diag = [cm[i][i] for i in range(n_class)]
-        acc  = tf.divide(tf.reduce_sum(diag), tf.reduce_sum(cm))
-        return acc
-
-    return pixel_acc
-
-
-def MeanIOU():
-    '''
-    IOU class:  Intersection over uion for each class  IoU=TP / (TP+FP+FN)
-    iIOU class: Instance Intersection over Union  iIoU = iTP / (iTP + FP + iFN)
-    '''
-
-
-    def mean_iou(y_true, y_pred):
-        """  compute the value of mean iou
-        :param pred:  2d array, int, prediction, (N, h, w, c)
-        :param gt: 2d array, int, ground truth  (N, h, w, c)
-        :return:
-            miou: float, the value of miou
-        """
-
-        cm = confusion_matrix(y_true, y_pred, n_class)
-
-        unions        = []
-        intersections = []
-        for i in range(n_class):
-            # intersection = TP
-            # union = (TP + FP + FN)
-            inter = cm[i][i]
-            union = tf.subtract(tf.add(tf.reduce_sum(cm[i]), tf.reduce_sum(cm[:][i])),cm[i][i])
-            intersections.append(inter)
-            unions.append(union)
-             # ious.append(tf.divide(intersection, union))
-        nombre_val      = tf.cast(tf.math.count_nonzero(unions), dtype=tf.float64)
-        non_zero_unions = tf.where(tf.not_equal(unions, 0), unions, 1)
-        ious            = tf.divide(intersections, non_zero_unions)
-        sum_ious        = tf.reduce_sum(ious)
-        mean            = tf.divide(sum_ious, nombre_val)
-        return mean
-
-    return mean_iou
-
-def CELoss():
-
-    def cross_entropy(y_true, y_pred):
-        softmax_ce_with_logits = tf.nn.softmax_cross_entropy_with_logits(logits=y_pred, labels=y_true)
-        loss                   = tf.reduce_mean(softmax_ce_with_logits)
-        return loss
-
-    return cross_entropy
 
 
 class Total_Loss():
@@ -162,24 +107,69 @@ class Total_Loss():
         self.class_names = class_names
         self.n_class = n_class
 
+    def create_onehot_encoding(self, label, n_class=20):
+        h, w = np.shape(label)
+        target = np.zeros((n_class, h, w))
+        for c in range(n_class):
+            target[c][label == c] = 1
+        target[19][label == 255] = 1
+        target = np.transpose(target, (1, 2, 0))
+        return target
+
+    def scc_loss(self, y_true, y_pred):
+        '''
+        Mask the pixels in the loss where y_true == 255 (ignore)
+        :param y_true:
+        :param y_pred:
+        :return:
+        '''
+        mask = y_true != 255  # ignore label 255
+        gt_masked = tf.boolean_mask(y_true, mask)
+        predict_masked = tf.boolean_mask(y_pred, mask)
+        predict_masked = tf.maximum(predict_masked, self.epsilon)
+        # tf.print('gt', gt_masked.shape)
+        # tf.print('pre', predict_masked.shape)
+        scc = tf.keras.losses.SparseCategoricalCrossentropy()
+        return scc(gt_masked, predict_masked)
+
+
     def softmax_loss(self, y_true, y_pred):
-        y_pred = tf.maximum(y_pred, self.epsilon)
-        softmax_loss = -tf.reduce_sum(y_true * tf.math.log(y_pred), axis=-1)
+        '''
+        Mask the pixels in the loss where y_true == 255 (ignore)
+        :param y_true:
+        :param y_pred:
+        :return:
+        '''
+        mask = y_true != 255  # ignore label 255
+        gt_masked = tf.boolean_mask(y_true, mask)
+        gt_masked = self.create_onehot_encoding(gt_masked, self.n_class)
+        predict_masked = tf.boolean_mask(y_pred, mask)
+        predict_masked = tf.maximum(predict_masked, self.epsilon)
+        softmax_loss = -tf.reduce_sum(gt_masked * tf.math.log(predict_masked), axis=-1)
         return softmax_loss
 
-    def focal_loss(self, y_true, y_pred):
-        y_pred = tf.maximum(y_pred, self.epsilon)
-        ones = tf.ones_like(y_true)
-        # alpha should be a step function as paper mentioned, but ut doesn't matter
-        alpha_t = tf.where(tf.equal(y_true,1), self.alpha*ones, 1-self.alpha*ones)
-        focal_loss = -tf.reduce_sum(y_true * alpha_t * (1 - y_pred) ** self.gamma * tf.math.log(y_pred), axis=-1)
-        return focal_loss
-
     def miou(self, y_true, y_pred):
-        y_true_arg = tf.argmax(y_true, 1)
+        '''
+        miou should be global
+
+        :param y_true:  (batch_size, 768, 768)
+        :param y_pred:  (batch_size, 768, 768, n_class)
+        :return:
+        '''
+
+        batch_size, h, w = y_true.shape
+        y_true = tf.reshape(y_true, [-1])
+        y_pred = tf.reshape(y_pred, [-1, self.n_class])
+
+        y_true_arg = y_true
         y_pred_arg = tf.argmax(y_pred, 1)
-        m = MeanIoU(num_classes=self.n_class)
-        m.update_state(y_true_arg, y_pred_arg)
+
+        mask = y_true_arg != 255  # ignore label 255
+        gt_masked = tf.boolean_mask(y_true_arg, mask)
+        predict_masked = tf.boolean_mask(y_pred_arg, mask)
+
+        m = MeanIoU(num_classes=(self.n_class-1))
+        m.update_state(gt_masked, predict_masked)
         mious = m.result()
         m.reset_states()
         return mious
@@ -192,13 +182,14 @@ class Total_Loss():
             miou: float, the value of miou
         """
 
-        cm = confusion_matrix(y_true, y_pred, self.n_class)
+        cm = confusion_matrix(y_true,  y_pred, self.n_class)
+        # tf.print('confusion metrics: ', cm.shape)
 
         unions        = []
         intersections = []
         ious          = []
         self.miou_dir = {}
-        for i in range(self.n_class):
+        for i in range(self.n_class-1):
             # intersection = TP
             # union = (TP + FP + FN)
             inter = cm[i][i]
@@ -217,17 +208,16 @@ class Total_Loss():
         ious_real       = [tf.divide(inter, union) for inter, union in zip(intersections, unions)]
 
 
-        for i in range(self.n_class):
-            # print(i)
+        for i in range(self.n_class-1):
             name = self.class_names[i]
             # print(i, name)
             self.miou_dir[name] = ious_real[i]
-            tf.print(name, self.miou_dir[name])
+            tf.print(i, name, self.miou_dir[name])
         # tf.print('\n', miou_dir)
         return mean
 
     def pixel_acc(self, y_true, y_pred):
         cm   = confusion_matrix(y_true, y_pred, self.n_class)
-        diag = [cm[i][i] for i in range(self.n_class)]
+        diag = [cm[i][i] for i in range(self.n_class-1)]
         acc  = tf.divide(tf.reduce_sum(diag), tf.reduce_sum(cm))
         return acc

@@ -4,24 +4,24 @@ from tensorflow.keras.layers import Input
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
 from datasets.cityscapes import Cityscapes
 from models.nets import deeplabv3plus_resnet50
 from metrics.loss import Total_Loss
 
-
-config = {'batch_size': 16, 
+config = {'batch_size': 4,
           'input_shape': (768, 768, 3),
-          'num_classes': 19,
+          'num_classes': 20,
           'lr': 5e-3,
           'epochs': 500,
-
-          'backbone': 'renset50',
+          'backbone': 'resnet50',
          }
 
-
-
 if __name__ == '__main__':
+    policy = mixed_precision.Policy('mixed_float16')
+    mixed_precision.set_policy(policy)
+
     # load data 
     train_params = {'root': 'G:\Datasets\cityscapes',
                     'split': 'train',
@@ -50,16 +50,13 @@ if __name__ == '__main__':
     model = deeplabv3plus_resnet50(inputs, use_bn=True, use_bias=False, 
                                    num_classes=config['num_classes'], 
                                    backbone=config['backbone'])
+    # model.summary()
 
     # compile
     total_loss = Total_Loss(config['num_classes'], val_dataset.class_name, alpha=0.75, gamma=2.0)
-    model.compile(loss='categorical_crossentropy',
+    model.compile(loss=total_loss.scc_loss,
                   optimizer=Adam(lr=config['lr']),
-                  metrics=['accuracy',
-                           'categorical_crossentropy',
-                           total_loss.focal_loss,
-                           total_loss.softmax_loss,
-                           total_loss.mean_iou,
+                  metrics=[total_loss.mean_iou,
                            total_loss.pixel_acc])
     
     # callbacks 

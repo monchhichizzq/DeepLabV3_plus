@@ -142,6 +142,7 @@ class DeepLabV3Plus:
 
         # x = Reshape((-1, self.num_classes))(x)
         x = Softmax()(x)
+        x = tf.cast(x, dtype=tf.float32)
 
         model = Model(input_tensor, x, name='deeplabv3plus')
         return model
