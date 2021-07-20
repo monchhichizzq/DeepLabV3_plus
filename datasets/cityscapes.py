@@ -72,7 +72,7 @@ class Cityscapes(Sequence):
     train_id_to_color = np.array(train_id_to_color)
     print('Number of colors: {}'.format(len(train_id_to_color)))
     id_to_train_id = np.array([c.train_id for c in classes])
-    print('Number of ids: {}'.format(len(id_to_train_id)))
+    print('Number of ids: {}, {}'.format(len(id_to_train_id), id_to_train_id))
     class_name = [c.name for c in classes if (c.train_id != -1 and c.train_id != 255)]
     print('class names num: {}, {}'.format(len(class_name), class_name))
     cls_dir = {}
@@ -99,6 +99,7 @@ class Cityscapes(Sequence):
         :param target_type:
         :param kwargs:
         '''
+        self.is_original = False
         self.root = os.path.expanduser(root)
         self.mode = 'gtFine'
         self.shuffle = True if split == 'train' else False
@@ -122,7 +123,14 @@ class Cityscapes(Sequence):
         self.mean = [0.485, 0.456, 0.406]
         self.std = [0.229, 0.224, 0.225]
 
-        self.dim = (self.crop_size, self.crop_size) if split == 'train' else (1024, 2048)
+        if split == 'train':
+            self.dim = (self.crop_size, self.crop_size)
+
+        elif not self.is_original:
+            self.dim = (self.crop_size, self.crop_size)
+
+        else:
+            self.dim = (1024, 2048)
 
         self.split = split
         self.images = []
@@ -203,8 +211,15 @@ class Cityscapes(Sequence):
                     target = np.array(target, dtype=np.uint8)
                     cv2.imshow('image', image)
                     cv2.imshow('target', target)
+
+                if not self.is_original:
+                    image = image.resize((self.crop_size, self.crop_size), resample=Image.BILINEAR)
+                    target = target.resize((self.crop_size, self.crop_size), resample=Image.NEAREST)
+                    # target = tf.image.resize(target, (self.crop_size, self.crop_size), method=tf.image.ResizeMethod.BILINEAR)
+                # print('target', np.min(target), np.max(target), type(target))
                 image, target = Noramlize(image, target, self.mean, self.std)
             target = self.encode_target(target)
+            target[target == 255] = 19
             # target = tf.keras.utils.to_categorical(target, num_classes=19)
 
             images[i] = image

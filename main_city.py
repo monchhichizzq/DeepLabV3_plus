@@ -15,12 +15,12 @@ config = {'batch_size': 4,
           'num_classes': 20,
           'lr': 5e-3,
           'epochs': 500,
-          'backbone': 'resnet50',
+          'backbone': 'resnet18',
          }
 
 if __name__ == '__main__':
-    policy = mixed_precision.Policy('mixed_float16')
-    mixed_precision.set_policy(policy)
+    # policy = mixed_precision.Policy('mixed_float16')
+    # mixed_precision.set_policy(policy)
 
     # load data 
     train_params = {'root': 'G:\Datasets\cityscapes',
@@ -55,15 +55,16 @@ if __name__ == '__main__':
     # compile
     total_loss = Total_Loss(config['num_classes'], val_dataset.class_name, alpha=0.75, gamma=2.0)
     model.compile(loss=total_loss.scc_loss,
-                  optimizer=Adam(lr=config['lr']),
+                  optimizer=Adam(lr=config['lr']), 
                   metrics=[total_loss.mean_iou,
-                           total_loss.pixel_acc])
+                          total_loss.pixel_acc])
     
     # callbacks 
     log_dir = "logs"
     os.makedirs(log_dir, exist_ok=True)       
     checkpoint = ModelCheckpoint(os.path.join(log_dir,
-                                 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}-mean_iou{mean_iou:.3f}-pixel_acc{pixel_acc:.3f}-val_mean_iou{val_mean_iou:.3f}-val_pixel_acc{val_pixel_acc:.3f}.h5'),
+                                              'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5'),
+                                 # 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}-mean_iou{miou:.3f}-pixel_acc{pixel_acc:.3f}-val_mean_iou{val_miou:.3f}-val_pixel_acc{val_pixel_acc:.3f}.h5'),
                                  monitor='val_loss', save_weights_only=False, save_best_only=True)
 
 

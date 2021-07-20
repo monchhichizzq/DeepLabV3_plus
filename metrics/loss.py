@@ -83,18 +83,21 @@ def confusion_matrix(y_true, y_pred, n_class):
     y_pred = tf.reshape(y_pred, [-1, n_class])
 
     y_true_arg = y_true
+    # y_true_arg[y_true_arg==255] = 19  # problem replace 255 by 19
     y_pred_arg = tf.argmax(y_pred, 1)
 
-    mask = y_true_arg != 255  # ignore label 255
-    gt_masked = tf.boolean_mask(y_true_arg, mask)
-    predict_masked = tf.boolean_mask(y_pred_arg, mask)
+    # mask = y_true_arg != 255  # ignore label 255
+    gt_masked = y_true_arg
+    predict_masked = y_pred_arg
+    # gt_masked = tf.boolean_mask(y_true_arg, mask)
+    # predict_masked = tf.boolean_mask(y_pred_arg, mask)
 
-    # tf.print('gt', gt_masked.shape)
-    # tf.print('pre', predict_masked.shape)
+    # print('gt', gt_masked.shape)
+    # print('pre', predict_masked.shape)
 
     # confusion matrix
-    # cm = tf.math.confusion_matrix(gt_masked, predict_masked, num_classes=(n_class-1))
-    cm = tf.math.confusion_matrix(gt_masked, predict_masked)
+    cm = tf.math.confusion_matrix(gt_masked, predict_masked, num_classes=(n_class))
+    # cm = tf.math.confusion_matrix(gt_masked, predict_masked)
     # confusion matrix: (20, 20)
     return cm
 
@@ -123,7 +126,7 @@ class Total_Loss():
         :param y_pred:
         :return:
         '''
-        mask = y_true != 255  # ignore label 255
+        mask = y_true != 19  # ignore label 255 - also 19
         gt_masked = tf.boolean_mask(y_true, mask)
         predict_masked = tf.boolean_mask(y_pred, mask)
         predict_masked = tf.maximum(predict_masked, self.epsilon)
@@ -140,7 +143,7 @@ class Total_Loss():
         :param y_pred:
         :return:
         '''
-        mask = y_true != 255  # ignore label 255
+        mask = y_true != 19  # ignore label 255
         gt_masked = tf.boolean_mask(y_true, mask)
         gt_masked = self.create_onehot_encoding(gt_masked, self.n_class)
         predict_masked = tf.boolean_mask(y_pred, mask)
@@ -157,14 +160,14 @@ class Total_Loss():
         :return:
         '''
 
-        batch_size, h, w = y_true.shape
+        #batch_size, h, w = y_true.shape
         y_true = tf.reshape(y_true, [-1])
         y_pred = tf.reshape(y_pred, [-1, self.n_class])
 
         y_true_arg = y_true
         y_pred_arg = tf.argmax(y_pred, 1)
 
-        mask = y_true_arg != 255  # ignore label 255
+        mask = y_true_arg != 19  # ignore label 255
         gt_masked = tf.boolean_mask(y_true_arg, mask)
         predict_masked = tf.boolean_mask(y_pred_arg, mask)
 
@@ -212,7 +215,7 @@ class Total_Loss():
             name = self.class_names[i]
             # print(i, name)
             self.miou_dir[name] = ious_real[i]
-            tf.print(i, name, self.miou_dir[name])
+            # tf.print(i, name, self.miou_dir[name])
         # tf.print('\n', miou_dir)
         return mean
 
