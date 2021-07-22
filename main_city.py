@@ -55,17 +55,17 @@ if __name__ == '__main__':
     # compile
     total_loss = Total_Loss(config['num_classes'], val_dataset.class_name, alpha=0.75, gamma=2.0)
     model.compile(loss=total_loss.scc_loss,
-                  optimizer=Adam(lr=config['lr']), 
+                  optimizer=Adam(lr=config['lr']),
                   metrics=[total_loss.mean_iou,
                           total_loss.pixel_acc])
     
     # callbacks 
-    log_dir = "logs"
+    log_dir = "logs/resnet18backbone"
     os.makedirs(log_dir, exist_ok=True)       
     checkpoint = ModelCheckpoint(os.path.join(log_dir,
-                                              'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5'),
-                                 # 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}-mean_iou{miou:.3f}-pixel_acc{pixel_acc:.3f}-val_mean_iou{val_miou:.3f}-val_pixel_acc{val_pixel_acc:.3f}.h5'),
-                                 monitor='val_loss', save_weights_only=False, save_best_only=True)
+                                              # 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5'),
+                                 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}-mean_iou{mean_iou:.3f}-pixel_acc{pixel_acc:.3f}-val_mean_iou{val_mean_iou:.3f}-val_pixel_acc{val_pixel_acc:.3f}.h5'),
+                                 monitor='val_loss', save_weights_only=False, save_best_only=True, verbose=1)
 
 
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=20, verbose=1)
@@ -74,5 +74,5 @@ if __name__ == '__main__':
     model.fit(train_dataset,
         validation_data=val_dataset,
         epochs=config['epochs'],
-        verbose=1,
+        verbose=2,
         callbacks=[checkpoint, reduce_lr])

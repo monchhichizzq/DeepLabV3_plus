@@ -9,3 +9,5 @@ cityscapes
 pretrained_models
 .DS_Store
 ._*
+logs
+.idea

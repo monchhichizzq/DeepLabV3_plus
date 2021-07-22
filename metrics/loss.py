@@ -185,14 +185,16 @@ class Total_Loss():
             miou: float, the value of miou
         """
 
-        cm = confusion_matrix(y_true,  y_pred, self.n_class)
+        non_ignored_cls = self.n_class - 1
+        cm = confusion_matrix(y_true, y_pred, self.n_class)
+        cm = cm[:non_ignored_cls, :non_ignored_cls]
         # tf.print('confusion metrics: ', cm.shape)
 
         unions        = []
         intersections = []
         ious          = []
         self.miou_dir = {}
-        for i in range(self.n_class-1):
+        for i in range(non_ignored_cls):
             # intersection = TP
             # union = (TP + FP + FN)
             inter = cm[i][i]
@@ -202,14 +204,16 @@ class Total_Loss():
             ious.append(tf.divide(inter, union))
 
         # In case uions = 0
-        nombre_val      = tf.cast(tf.math.count_nonzero(unions), dtype=tf.float64)
-        non_zero_unions = tf.where(tf.not_equal(unions, 0), unions, 1)
-        ious            = tf.divide(intersections, non_zero_unions)
-        sum_ious        = tf.reduce_sum(ious)
-        mean            = tf.divide(sum_ious, nombre_val)
+        # nombre_val      = tf.cast(tf.math.count_nonzero(unions), dtype=tf.float64)
+        # non_zero_unions = tf.where(tf.not_equal(unions, 0), unions, 1)
+        # ious            = tf.divide(intersections, non_zero_unions)
+        # sum_ious        = tf.reduce_sum(ious)
+        # mean            = tf.divide(sum_ious, nombre_val)
 
         ious_real       = [tf.divide(inter, union) for inter, union in zip(intersections, unions)]
-
+        non_nan_ious    = [ 0 if tf.math.isnan(iou) else iou for iou in ious_real]
+        mean            = tf.reduce_mean(ious_real)
+        non_nan_mious   = tf.reduce_mean(non_nan_ious)
 
         for i in range(self.n_class-1):
             name = self.class_names[i]
@@ -217,10 +221,12 @@ class Total_Loss():
             self.miou_dir[name] = ious_real[i]
             # tf.print(i, name, self.miou_dir[name])
         # tf.print('\n', miou_dir)
-        return mean
+        return non_nan_mious
 
     def pixel_acc(self, y_true, y_pred):
+        non_ignored_cls = self.n_class-1
         cm   = confusion_matrix(y_true, y_pred, self.n_class)
-        diag = [cm[i][i] for i in range(self.n_class-1)]
+        cm   = cm[:non_ignored_cls, :non_ignored_cls]
+        diag = [cm[i][i] for i in range(non_ignored_cls)]  # ignore class 19, which originally to be 255
         acc  = tf.divide(tf.reduce_sum(diag), tf.reduce_sum(cm))
         return acc

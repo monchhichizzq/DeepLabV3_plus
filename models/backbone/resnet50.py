@@ -41,7 +41,7 @@ class ResNet50():
         x = layers.Activation('relu', name=name + '_1_relu')(x)
         # conv_layer 2 - padding='SAME'
         x = layers.Conv2D(
-            filters, kernel_size, dilation_rate=dilated_rate, padding='same',
+            filters, 3, dilation_rate=dilated_rate, padding='same',
             use_bias=self.add_bias, name=name + '_2_conv')(x)
         if self.add_bn:
             x = layers.BatchNormalization(

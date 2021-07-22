@@ -48,6 +48,8 @@ class ResNet18():
         conv_name_2 = 'block_' + block_name + '_conv_2'
         skip_connection = 'block_' + block_name + '_skip_connection'
 
+        # https://github.com/fregu856/deeplabv3/blob/master/model/resnet.py
+
         # Part 1
         x = Conv2D(filter_num, (3, 3), strides=stride, padding='same', use_bias=self.use_bias,
                     kernel_initializer='he_normal', dilation_rate=dilated_rate, name=conv_name_1)(inputs)
@@ -57,14 +59,14 @@ class ResNet18():
 
         # Part 2
         x = Conv2D(filter_num, (3, 3), strides=1, padding='same', use_bias=self.use_bias,
-                    kernel_initializer='he_normal', name=conv_name_2)(x)
+                    kernel_initializer='he_normal', dilation_rate=dilated_rate, name=conv_name_2)(x)
         if self.use_bn:
             x = BatchNormalization(name=conv_name_2 + '_bn')(x)
 
         #  skip
         if stride != 1 or dilated_rate != 1:
             residual = Conv2D(filter_num, (1, 1), strides=stride, use_bias=self.use_bias,
-                                kernel_initializer='he_normal', dilation_rate=dilated_rate, name=skip_connection)(inputs)
+                                kernel_initializer='he_normal', name=skip_connection)(inputs)
         else:
             residual = inputs
 
