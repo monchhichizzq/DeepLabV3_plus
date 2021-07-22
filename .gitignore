@@ -3,11 +3,8 @@ VOCdevkit
 checkpoints
 .vscode
 *.pyc
+__pycache__
 results
 checkpoints_bak
 cityscapes
 pretrained_models
-.DS_Store
-._*
-logs
-.idea

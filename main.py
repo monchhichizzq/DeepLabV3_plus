@@ -19,65 +19,64 @@ from utils.visualizer import Visualizer
 from PIL import Image
 import matplotlib
 import matplotlib.pyplot as plt
-from torchsummary import summary
 
 '''
 python main.py --model deeplabv3plus_mobilenet 
-                --dataset cityscapes 
                 --enable_vis 
                 --vis_port 28333 
-                --gpu_id 0  
-                --lr 0.1  
-                --crop_size 768 
+                --gpu_id 0 
+                --year 2012_aug 
+                --crop_val 
+                --lr 0.01 
+                --crop_size 513 
                 --batch_size 16 
                 --output_stride 16 
-                --data_root ./datasets/data/cityscapes 
-
+                --ckpt checkpoints/best_deeplabv3plus_mobilenet_voc_os16.pth 
+                --test_only 
+                --save_val_results
 '''
 
 def get_argparser():
     parser = argparse.ArgumentParser()
 
     # Datset Options
-    parser.add_argument("--data_root", type=str, default='G:\Datasets\cityscapes',
+    parser.add_argument("--data_root", type=str, default='G:\Datasets\VOC2012',
                         help="path to Dataset")
-    parser.add_argument("--dataset", type=str, default='cityscapes',
+    parser.add_argument("--dataset", type=str, default='voc',
                         choices=['voc', 'cityscapes'], help='Name of dataset')
     parser.add_argument("--num_classes", type=int, default=None,
                         help="num classes (default: None)")
 
     # Deeplab Options
-    parser.add_argument("--model", type=str, default='deeplabv3plus_resnet50',
+    parser.add_argument("--model", type=str, default='deeplabv3_mobilenet',
                         choices=['deeplabv3_resnet50',  'deeplabv3plus_resnet50',
                                  'deeplabv3_resnet101', 'deeplabv3plus_resnet101',
                                  'deeplabv3_mobilenet', 'deeplabv3plus_mobilenet'], help='model name')
     parser.add_argument("--separable_conv", action='store_true', default=False,
                         help="apply separable conv to decoder and aspp")
-    parser.add_argument("--output_stride", type=int, default=8, choices=[8, 16])  # default 16
+    parser.add_argument("--output_stride", type=int, default=16, choices=[8, 16])
 
     # Train Options
-    parser.add_argument("--test_only", action='store_true', default=False)
+    parser.add_argument("--test_only", action='store_true', default=True)
     parser.add_argument("--save_val_results", action='store_true', default=False,
                         help="save segmentation results to \"./results\"")
     parser.add_argument("--total_itrs", type=int, default=30e3,
                         help="epoch number (default: 30k)")
-    parser.add_argument("--lr", type=float, default=0.1,
+    parser.add_argument("--lr", type=float, default=0.01,
                         help="learning rate (default: 0.01)")
     parser.add_argument("--lr_policy", type=str, default='poly', choices=['poly', 'step'],
                         help="learning rate scheduler policy")
     parser.add_argument("--step_size", type=int, default=10000)
-    parser.add_argument("--crop_val", action='store_true', default=False, # True or False
+    parser.add_argument("--crop_val", action='store_true', default=True,
                         help='crop validation (default: False)')
-    parser.add_argument("--batch_size", type=int, default=2,
+    parser.add_argument("--batch_size", type=int, default=1,
                         help='batch size (default: 16)')
-    parser.add_argument("--val_batch_size", type=int, default=1,
+    parser.add_argument("--val_batch_size", type=int, default=4,
                         help='batch size for validation (default: 4)')
-    parser.add_argument("--crop_size", type=int, default=768)
+    parser.add_argument("--crop_size", type=int, default=513)
     
-    parser.add_argument("--ckpt", default=None, type=str,
+    parser.add_argument("--ckpt", default='pretrained_models/voc_deeplabv3/best_deeplabv3_mobilenet_voc_os16.pth', type=str,
                         help="restore from checkpoint")
-    # parser.add_argument("--ckpt", default='pretrained_models/cityscapes_deeplabv3_plus/best_deeplabv3plus_resnet50_cityscapes_os16.pth', type=str,
-    #                     help="restore from checkpoint")
     parser.add_argument("--continue_training", action='store_true', default=False)
 
     parser.add_argument("--loss_type", type=str, default='cross_entropy',
@@ -147,7 +146,7 @@ def get_dataset(opts):
         train_transform = et.ExtCompose([
             #et.ExtResize( 512 ),
             et.ExtRandomCrop(size=(opts.crop_size, opts.crop_size)),
-            et.ExtColorJitter( brightness=0.5, contrast=0.5, saturation=0.5),
+            et.ExtColorJitter( brightness=0.5, contrast=0.5, saturation=0.5 ),
             et.ExtRandomHorizontalFlip(),
             et.ExtToTensor(),
             et.ExtNormalize(mean=[0.485, 0.456, 0.406],
@@ -190,7 +189,7 @@ def validate(opts, model, loader, device, metrics, ret_samples_ids=None):
             outputs = model(images)
             infer_end = time.time()
             inference_time.append((infer_end-infer_start)*1000)
-            # print('inference time: %0.2f ms'%((infer_end-infer_start)*1000))
+            print('inference time: %0.2f ms'%((infer_end-infer_start)*1000))
             preds = outputs.detach().max(dim=1)[1].cpu().numpy()
             targets = labels.cpu().numpy()
 
@@ -312,9 +311,8 @@ def main():
             "best_score": best_score,
         }, path)
         print("Model saved as %s" % path)
-
     
-    utils.mkdir('checkpoints_separable_conv_%s'%(opts.separable_conv))
+    utils.mkdir('checkpoints')
     # Restore
     best_score = 0.0
     cur_itrs = 0
@@ -337,8 +335,6 @@ def main():
         print("[!] Retrain")
         model = nn.DataParallel(model)
         model.to(device)
-    # print(model)
-    # summary(model, (3, 768, 768))
 
     #==========   Train Loop   ==========#
     vis_sample_id = np.random.randint(0, len(val_loader), opts.vis_num_samples,
@@ -358,8 +354,6 @@ def main():
         model.train()
         cur_epochs += 1
         for (images, labels) in train_loader:
-            print('label: ', np.shape(labels))
-
             cur_itrs += 1
 
             images = images.to(device, dtype=torch.float32)
@@ -383,8 +377,8 @@ def main():
                 interval_loss = 0.0
 
             if (cur_itrs) % opts.val_interval == 0:
-                save_ckpt('checkpoints_separable_conv_%s/latest_%s_%s_os%d.pth' %
-                          (opts.separable_conv, opts.model, opts.dataset, opts.output_stride))
+                save_ckpt('checkpoints/latest_%s_%s_os%d.pth' %
+                          (opts.model, opts.dataset, opts.output_stride))
                 print("validation...")
                 model.eval()
                 val_score, ret_samples = validate(
@@ -392,8 +386,8 @@ def main():
                 print(metrics.to_str(val_score))
                 if val_score['Mean IoU'] > best_score:  # save best model
                     best_score = val_score['Mean IoU']
-                    save_ckpt('checkpoints_separable_conv_%s/best_%s_%s_os%d_mIoU-%0.2f.pth' %
-                              (opts.separable_conv, opts.model, opts.dataset,opts.output_stride, val_score['Mean IoU']*100))
+                    save_ckpt('checkpoints/best_%s_%s_os%d.pth' %
+                              (opts.model, opts.dataset,opts.output_stride))
 
                 if vis is not None:  # visualize validation score and samples
                     vis.vis_scalar("[Val] Overall Acc", cur_itrs, val_score['Overall Acc'])
