@@ -6,7 +6,6 @@
 
 import os
 from models.deeplab import Deeplabv3
-from preprocess.tf_dataloader_json import CityScape_DataGenerator
 from preparation.semantic_color2index import index_to_name
 from loss.tf_metrics_onehot import Total_Loss
 from tensorflow.keras.optimizers import Adam
@@ -17,7 +16,7 @@ class_name = index_to_name()
 
 # hyperparameter
 scale = 8
-batch_size = 32
+batch_size = 16
 num_classes = 34
 num_parallel = 8
 height, width = 1024, 2048
@@ -101,5 +100,5 @@ if __name__ == "__main__":
     model.fit(train_ds,
             validation_data=val_ds,
             epochs=epochs,
-            verbose=1,
+            verbose=2,
             callbacks=[checkpoint, reduce_lr])

@@ -60,17 +60,14 @@ def build_input(filenames_list, batch_size, scale, input_size, num_classes, is_t
     # dataset = dataset.interleave( num_parallel_calls=Y) # interleave  并行I/O
     # dataset = dataset.map(lambda x: tf.py_function(read_img, [x, scale, input_size, num_classes, is_train], [tf.float32, tf.float32]), num_parallel_calls=num_parallel)
     dataset = dataset.map(lambda x: preprocess_data(x, scale, input_size, num_classes, is_train), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    print(dataset)
     # 这里大概率是因为tf.dataset中使用了tf.py_function导致无法自动推导出张良的形状，所以需要自己手动设置形状。
     # num_parallel_calls 多线程运算preprocess
 
-    if is_train:
-        dataset = dataset.shuffle(10)  # 将数据打乱，数值越大，混乱程度越大
     dataset = dataset.batch(batch_size, drop_remainder=False)
-    for data in dataset:
-        img, label = data
-        print(np.shape(img), np.shape(label), batch_size)
-    # dataset = dataset.cache()
+    # if is_train:
+    #     dataset = dataset.shuffle(5)  # 将数据打乱，数值越大，混乱程度越大
+    # print(dataset)
+    dataset = dataset.cache()
     # dataset = dataset.repeat(num_epochs)
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)   # prefetch 训练同时加载数据
     # dataset = dataset.prefetch(buffer_size=4)
