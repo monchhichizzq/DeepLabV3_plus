@@ -24,8 +24,8 @@ def dilated_resnet18(input_tensor, use_bn, use_bias):
     model = Model(input_tensor, net_outs['out'], name='dilated_resnet18')
     return model
 
-def deeplabv3plus_resnet(input_tensor, use_bn, use_bias, num_classes, backbone='resnet18'):
-    deeplab = DeepLabV3Plus(backbone, use_bn, use_bias, num_classes, aspp_dilate=[12, 24, 36])
+def deeplabv3plus_resnet(input_tensor, use_bn, use_bias, num_classes, output_stride, backbone='resnet18'):
+    deeplab = DeepLabV3Plus(backbone, use_bn, use_bias, num_classes, output_stride)
     model = deeplab.build(input_tensor)
     return model
 

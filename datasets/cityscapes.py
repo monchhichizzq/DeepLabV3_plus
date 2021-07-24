@@ -114,6 +114,7 @@ class Cityscapes(Sequence):
 
         # data augmentation
         # random crop
+        self.input_size = kwargs.get('input_size', (512, 1024))
         self.crop_size = kwargs.get('crop_size', 768) # image crop as (768, 768) for training while (1024, 2048) for test
         # color jitter
         self.brightness = kwargs.get('brightness', 0.5)
@@ -127,7 +128,7 @@ class Cityscapes(Sequence):
             self.dim = (self.crop_size, self.crop_size)
 
         elif not self.is_original:
-            self.dim = (self.crop_size, self.crop_size)
+            self.dim = self.input_size
 
         else:
             self.dim = (1024, 2048)
@@ -213,8 +214,8 @@ class Cityscapes(Sequence):
                     cv2.imshow('target', target)
 
                 if not self.is_original:
-                    image = image.resize((self.crop_size, self.crop_size), resample=Image.BILINEAR)
-                    target = target.resize((self.crop_size, self.crop_size), resample=Image.NEAREST)
+                    image = image.resize((self.dim[1], self.dim[0]), resample=Image.BILINEAR)
+                    target = target.resize((self.dim[1], self.dim[0]), resample=Image.NEAREST)
                     # target = tf.image.resize(target, (self.crop_size, self.crop_size), method=tf.image.ResizeMethod.BILINEAR)
                 # print('target', np.min(target), np.max(target), type(target))
                 image, target = Noramlize(image, target, self.mean, self.std)

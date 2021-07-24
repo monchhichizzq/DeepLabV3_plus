@@ -27,7 +27,7 @@ from models.backbone.resnet18 import ResNet18
 from models.backbone.resnet50 import ResNet50
 
 class DeepLabV3Plus:
-    def __init__(self, backbone, add_bn, use_bias, num_classes, aspp_dilate=[12, 24, 36]):
+    def __init__(self, backbone, add_bn, use_bias, num_classes, output_stride):
         super(DeepLabV3Plus, self).__init__()
         '''
         backbone_out = ['low_level', 'out']
@@ -39,7 +39,8 @@ class DeepLabV3Plus:
         self.add_bn = add_bn
         self.use_bias = use_bias
         self.num_classes = num_classes
-        self.aspp_dilate = aspp_dilate
+        self.os = output_stride
+        self.aspp_dilate = [12, 24, 36] if output_stride == 8 else [6, 12, 18]
 
     def aspp_conv(self, x, filters, kernel_size, dilated_rate, idx):
         '''
@@ -119,9 +120,9 @@ class DeepLabV3Plus:
     def build(self, input_tensor):
         print('Backbone: {}'.format(self.backbone))
         if self.backbone == 'resnet18':
-            net_outs = ResNet18(use_bn=self.add_bn, use_bias=self.use_bias).build(input_tensor=input_tensor)
+            net_outs = ResNet18(use_bn=self.add_bn, use_bias=self.use_bias, output_stride=self.os).build(input_tensor=input_tensor)
         if self.backbone == 'resnet50':
-            net_outs = ResNet50(use_bn=self.add_bn, use_bias=self.use_bias).build(input_tensor=input_tensor)
+            net_outs = ResNet50(use_bn=self.add_bn, use_bias=self.use_bias, output_stride=self.os).build(input_tensor=input_tensor)
 
         # layer 1 low-level outputs 104x104x48
         low_level_feature = self.aspp_conv(net_outs['low_level'], 48, kernel_size=1, dilated_rate=1, idx='project')
@@ -129,7 +130,7 @@ class DeepLabV3Plus:
         # layer 4 outs 52x52x512
         output_feature = self.aspp(net_outs['out'], atrous_rates=self.aspp_dilate)
         # 52x52x256 -> 104x104x256
-        output_feature = UpSampling2D(size=(2, 2), interpolation='bilinear')(output_feature)
+        output_feature = UpSampling2D(size=(self.os//4, self.os//4), interpolation='bilinear')(output_feature)
 
         # 104,104,256 + 104,104,48 -> 104,104,304
         x = Concatenate()([output_feature, low_level_feature])

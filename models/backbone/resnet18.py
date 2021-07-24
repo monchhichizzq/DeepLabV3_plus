@@ -33,6 +33,7 @@ class ResNet18():
         self.use_bn = use_bn
         self.use_bias = use_bias
         self.layers_dims = [2, 2, 2, 2]
+        self.os = kwargs.get('output_stride', 16)
 
     def build_basic_block(self, inputs, filter_num, blocks, stride, dilated_rate, module_name):
         # The first block stride of each layer may be non-1
@@ -106,11 +107,19 @@ class ResNet18():
         net['low_level'] = x
         # 104, 104, 64 -> 52, 52, 128 downscale 8x
         x = self.build_basic_block(x, filter_num=128, blocks=self.layers_dims[1], stride=2, dilated_rate=1, module_name='module_1')
-        # 52, 52, 128 -> 52, 52, 256  downscale 16x
-        x = self.build_basic_block(x, filter_num=256, blocks=self.layers_dims[2], stride=1, dilated_rate=2, module_name='module_2')
-        # 52, 52, 256 -> 52, 52, 512  downscale 32x
-        x = self.build_basic_block(x, filter_num=512, blocks=self.layers_dims[3], stride=1, dilated_rate=4,
-                                                module_name='module_3')
+        if self.os == 8:
+            # 52, 52, 128 -> 52, 52, 256  downscale 16x
+            x = self.build_basic_block(x, filter_num=256, blocks=self.layers_dims[2], stride=1, dilated_rate=2, module_name='module_2')
+            # 52, 52, 256 -> 52, 52, 512  downscale 32x
+            x = self.build_basic_block(x, filter_num=512, blocks=self.layers_dims[3], stride=1, dilated_rate=4,
+                                                    module_name='module_3')
+        if self.os == 16:
+            # 52, 52, 128 -> 26, 26, 256  downscale 16x
+            x = self.build_basic_block(x, filter_num=256, blocks=self.layers_dims[2], stride=2, dilated_rate=1,
+                                       module_name='module_2')
+            # 26, 26, 256 -> 26, 26, 512  downscale 32x
+            x = self.build_basic_block(x, filter_num=512, blocks=self.layers_dims[3], stride=1, dilated_rate=2,
+                                       module_name='module_3')
 
         net['out'] = x
         return net

@@ -16,11 +16,12 @@ from models.nets import deeplabv3plus_resnet
 from metrics.loss import Total_Loss
 
 config = {'batch_size': 1,
-          'input_shape': (1024, 2048, 3),
+          'input_shape': (1024, 2048, 3), # (1024, 2048, 3),
           'num_classes': 20,
           'lr': 5e-3,
           'epochs': 500,
           'backbone': 'resnet18',
+          'output_stride': 8,
 
           'model_path': 'logs/resnet18backbone/ep166-loss0.099-val_loss0.280-mean_iounan-pixel_acc0.965-val_mean_iounan-val_pixel_acc0.918.h5',
          }
@@ -44,9 +45,10 @@ if __name__ == '__main__':
     val_params = {'root': 'G:\Datasets\cityscapes',
                 'split': 'val',
                 'mode': 'fine',
+                'input_size': (config['input_shape'][0], config['input_shape'][1]),
                 'batch_size': config['batch_size'],
                 'is_plot': False,
-                'orignal_size': True,
+                'orignal_size': False,
                 'target_type': 'semantic'}
 
     train_dataset = Cityscapes(**train_params)
@@ -56,8 +58,9 @@ if __name__ == '__main__':
     # model
     inputs = Input(shape=config['input_shape'])
     model = deeplabv3plus_resnet(inputs, use_bn=True, use_bias=False,
-                                   num_classes=config['num_classes'], 
-                                   backbone=config['backbone'])
+                                 num_classes=config['num_classes'],
+                                 output_stride=config['output_stride'],
+                                 backbone=config['backbone'])
     # model.summary()
     model.load_weights(config['model_path'], by_name=True, skip_mismatch=True)
 
@@ -70,8 +73,10 @@ if __name__ == '__main__':
 
 
     # train 
-    metrics = model.evaluate(val_dataset, verbose=1)
-    print(metrics)
+    # metrics = model.evaluate(val_dataset, verbose=1)
+    # print(metrics) # pixel acc: 94.48
+
+    non_ignore_cls = 19
 
     time_list = []
     zero_m = np.zeros((20, 20))
@@ -89,10 +94,11 @@ if __name__ == '__main__':
         time_list.append(np.round((end_time-start_time)*1000, 2))
         # print('val_prediction: ', y_pred.shape)
 
-        mask = (val_gt != 19)  # ignore label 255 - also 19
+        mask = (val_gt != non_ignore_cls)  # ignore label 255 - also 19
         gt_masked = tf.boolean_mask(val_gt, mask)
         predict_masked = tf.boolean_mask(y_pred, mask)
         predict_masked = tf.maximum(predict_masked, 1e-7)
+        # print(predict_masked.shape)
 
         y_true = tf.reshape(gt_masked, [-1])
         y_pred = tf.reshape(predict_masked, [-1, 20])
@@ -109,14 +115,15 @@ if __name__ == '__main__':
     intersections = []
     ious = []
     class_names = val_dataset.class_name
-    Confusion_Metrics = Confusion_Metrics[:19, :19]
-    for i in range(19):
+    Confusion_Metrics = Confusion_Metrics[:non_ignore_cls, :non_ignore_cls]
+    print('cm: ', Confusion_Metrics.shape)
+    for i in range(non_ignore_cls):
         # intersection = TP
         # union = (TP + FP + FN)
         inter = Confusion_Metrics[i][i]
         union = tf.subtract(tf.add(tf.reduce_sum(Confusion_Metrics[i]), tf.reduce_sum(Confusion_Metrics[:][i])), Confusion_Metrics[i][i])
         ious.append(tf.divide(inter, union))
-        name = class_names[i]
+        name = class_names[i] if i!=19 else 'others'
         iou_ =  np.round(tf.divide(inter, union) *100, 2)
         iou_table.add_row([i, name, iou_])
     mious =  np.round(tf.reduce_mean(ious).numpy()*100, 2)

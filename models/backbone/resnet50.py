@@ -15,6 +15,7 @@ class ResNet50():
         self.include_top = include_top
         self.classes = classes
         self.remove_maxpool = False
+        self.os = kwargs.get('output_stride', 16)
 
     def stack1(self, x, filters, blocks, stride=1, dilated_rate=1, name=None):
         x = self.block1(x, filters, stride=stride, 
@@ -105,14 +106,20 @@ class ResNet50():
         # 104x104x64 -> 104x104x256
         x = self.stack1(x, 64, 3, stride=1, dilated_rate=1, name='conv2')
         net['low_level'] = x
-        # 104x104x256 -> 52x52x512 atrous False downsample 8x 
-        # output stride = 8, aspp_pooling dilated_rate = 12, 24, 36
+        # 104x104x256 -> 52x52x512 atrous False downsample 8x
         x = self.stack1(x, 128, 4, stride=2, dilated_rate=1, name='conv3')
-        # 52x52x512 -> 26x26x1024  atrous True downsample 16x 
-        # output stride = 16, aspp_pooling dilated_rate = 6, 12, 18
-        x = self.stack1(x, 256, 6, stride=1, dilated_rate=2, name='conv4')
-        # 26x26x1024 -> 13x13x2048 atrous True downsample 32x
-        x = self.stack1(x, 512, 3, stride=1, dilated_rate=4, name='conv5')
+        if self.os == 8:
+            # 52x52x512 -> 52x52x1024  atrous True downsample 8x
+            # output stride = 8, aspp_pooling dilated_rate = 12, 24, 36
+            x = self.stack1(x, 256, 6, stride=1, dilated_rate=2, name='conv4')
+            # 52x52x1024 -> 52x52x2048 atrous True downsample 8x
+            x = self.stack1(x, 512, 3, stride=1, dilated_rate=4, name='conv5')
+        if self.os == 16:
+            # 52x52x512 -> 26x26x1024  atrous False downsample 16x
+            # output stride = 16, aspp_pooling dilated_rate = 6, 12, 18
+            x = self.stack1(x, 256, 6, stride=2, dilated_rate=1, name='conv4')
+            # 26x26x1024 -> 26x26x2048 atrous True downsample 16x
+            x = self.stack1(x, 512, 3, stride=1, dilated_rate=2, name='conv5')
         net['out'] = x
 
         # if self.include_top:
