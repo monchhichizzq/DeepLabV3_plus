@@ -21,9 +21,10 @@ config = {'batch_size': 1,
           'lr': 5e-3,
           'epochs': 500,
           'backbone': 'resnet18',
-          'output_stride': 8,
+          'output_stride': 16,
 
-          'model_path': 'logs/resnet18backbone/ep166-loss0.099-val_loss0.280-mean_iounan-pixel_acc0.965-val_mean_iounan-val_pixel_acc0.918.h5',
+          # 'model_path': 'logs/resnet18backbone/ep166-loss0.099-val_loss0.280-mean_iounan-pixel_acc0.965-val_mean_iounan-val_pixel_acc0.918.h5',
+          'model_path': 'logs/resnet18backbone_os16_adam/ep137-loss0.090-val_loss0.307-pixel_acc0.968-val_pixel_acc0.914.h5',
          }
 
 if __name__ == '__main__':
@@ -48,7 +49,7 @@ if __name__ == '__main__':
                 'input_size': (config['input_shape'][0], config['input_shape'][1]),
                 'batch_size': config['batch_size'],
                 'is_plot': False,
-                'orignal_size': False,
+                'orignal_size': True,
                 'target_type': 'semantic'}
 
     train_dataset = Cityscapes(**train_params)
@@ -65,16 +66,15 @@ if __name__ == '__main__':
     model.load_weights(config['model_path'], by_name=True, skip_mismatch=True)
 
     # compile
-    total_loss = Total_Loss(config['num_classes'], val_dataset.class_name, verbose=True)
+    total_loss = Total_Loss(config['num_classes'], val_dataset.class_name, verbose=False)
     model.compile(loss=total_loss.scc_loss,
                   optimizer=Adam(lr=config['lr']),
-                  metrics=[total_loss.mean_iou,
-                          total_loss.pixel_acc])
+                  metrics=[total_loss.pixel_acc])
 
 
     # train 
-    # metrics = model.evaluate(val_dataset, verbose=1)
-    # print(metrics) # pixel acc: 94.48
+    metrics = model.evaluate(val_dataset, verbose=1)
+    print(metrics) # pixel acc: 94.48
 
     non_ignore_cls = 19
 

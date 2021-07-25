@@ -59,12 +59,12 @@ if __name__ == '__main__':
     # compile
     total_loss = Total_Loss(config['num_classes'], val_dataset.class_name, verbose=False)
     model.compile(loss=total_loss.scc_loss,
-                  # optimizer=Adam(lr=config['lr']),
-                  optimizer=SGD(learning_rate=config['lr'], momentum=0.9),
+                  optimizer=Adam(lr=config['lr']),
+                  # optimizer=SGD(learning_rate=config['lr'], momentum=0.9),
                   metrics=[total_loss.pixel_acc])
     
     # callbacks 
-    log_dir = "logs/resnet18backbone_os16"
+    log_dir = "logs/resnet18backbone_os16_adam"
     os.makedirs(log_dir, exist_ok=True)       
     checkpoint = ModelCheckpoint(os.path.join(log_dir,
                                               # 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5'),
